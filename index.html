@@ -1,0 +1,442 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Aplikasi Pencatatan Kas Kiri-Kanan + Tanggal</title>
+    <!-- Library Offline untuk Mengubah HTML menjadi PDF -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        body {
+            background-color: #f4f7f6;
+            padding: 20px;
+            display: flex;
+            justify-content: center;
+        }
+        .container {
+            background: #fff;
+            padding: 25px;
+            border-radius: 10px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+            width: 100%;
+            max-width: 800px;
+        }
+        h2, h3 {
+            text-align: center;
+            margin-bottom: 20px;
+            color: #333;
+        }
+        .saldo-box {
+            background: #3498db;
+            color: white;
+            padding: 15px;
+            border-radius: 8px;
+            text-align: center;
+            font-size: 24px;
+            font-weight: bold;
+            margin-bottom: 20px;
+        }
+        .sub-saldo {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+        .card-sub {
+            padding: 12px;
+            color: white;
+            border-radius: 6px;
+            text-align: center;
+            font-weight: bold;
+        }
+        .bg-masuk { background-color: #2ecc71; }
+        .bg-keluar { background-color: #e74c3c; }
+        .form-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+        }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 600;
+            color: #555;
+        }
+        input, select {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            font-size: 16px;
+        }
+        .aksi-buttons {
+            display: grid;
+            grid-template-columns: 3fr 1fr;
+            gap: 10px;
+            margin-top: 10px;
+            margin-bottom: 25px;
+        }
+        button.btn-tambah {
+            padding: 12px;
+            background: #34495e;
+            border: none;
+            color: white;
+            font-size: 16px;
+            font-weight: bold;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: 0.3s;
+        }
+        button.btn-tambah:hover {
+            background: #2c3e50;
+        }
+        button.btn-print {
+            padding: 12px;
+            background: #f39c12;
+            border: none;
+            color: white;
+            font-size: 16px;
+            font-weight: bold;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: 0.3s;
+        }
+        button.btn-print:hover {
+            background: #e67e22;
+        }
+        
+        /* Area khusus Laporan PDF agar rapi */
+        #area-laporan-pdf {
+            padding: 10px;
+            background: #fff;
+        }
+        .pdf-header-ringkasan {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 3px double #ccc;
+        }
+        .pdf-ringkasan-box {
+            width: 48%;
+            padding: 10px;
+            border-radius: 5px;
+            color: white;
+            font-weight: bold;
+            text-align: center;
+        }
+
+        .grid-riwayat {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+        @media (max-width: 600px) {
+            .grid-riwayat {
+                grid-template-columns: 1fr;
+            }
+            .form-row {
+                grid-template-columns: 1fr;
+                gap: 0;
+            }
+        }
+        .kolom {
+            background: #fafafa;
+            padding: 15px;
+            border-radius: 8px;
+            border: 1px solid #e0e0e0;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        .kolom h4 {
+            margin-bottom: 15px;
+            padding-bottom: 5px;
+            border-bottom: 2px solid #ccc;
+            text-align: center;
+        }
+        .kolom-masuk h4 { color: #2ecc71; border-bottom-color: #2ecc71; }
+        .kolom-keluar h4 { color: #e74c3c; border-bottom-color: #e74c3c; }
+        .item-transaksi {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px;
+            margin-bottom: 8px;
+            border-radius: 5px;
+            background: #fff;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+        }
+        .info-tgl {
+            font-size: 11px;
+            color: #7f8c8d;
+            display: block;
+            margin-top: 2px;
+        }
+        .hapus-btn {
+            background: #bdc3c7;
+            color: white;
+            border: none;
+            padding: 5px 8px;
+            border-radius: 3px;
+            cursor: pointer;
+            font-size: 12px;
+            transition: 0.2s;
+        }
+        .hapus-btn:hover {
+            background: #c0392b;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h2>Catatan Keuangan Rehab Gedung Sekolah 2026</h2>
+    
+    <div class="saldo-box" id="total-saldo">Rp 0</div>
+    
+    <div class="sub-saldo">
+        <div class="card-sub bg-masuk">
+            Pemasukan<br><span id="total-masuk">Rp 0</span>
+        </div>
+        <div class="card-sub bg-keluar">
+            Pengeluaran<br><span id="total-keluar">Rp 0</span>
+        </div>
+    </div>
+
+    <form id="form-transaksi">
+        <div class="form-group">
+            <label for="deskripsi">Keterangan / Deskripsi</label>
+            <input type="text" id="deskripsi" placeholder="Contoh: Gaji, Makan Siang" required>
+        </div>
+        
+        <div class="form-row">
+            <div class="form-group">
+                <label for="jumlah">Jumlah (Rp)</label>
+                <input type="number" id="jumlah" placeholder="Contoh: 50000" required>
+            </div>
+            <div class="form-group">
+                <label for="tanggal">Tanggal</label>
+                <input type="date" id="tanggal" required>
+            </div>
+        </div>
+
+        <div class="form-group">
+            <label for="jenis">Jenis Transaksi</label>
+            <select id="jenis">
+                <option value="masuk">Pemasukan (+)</option>
+                <option value="keluar">Pengeluaran (-)</option>
+            </select>
+        </div>
+        <div class="aksi-buttons">
+            <button type="submit" class="btn-tambah">Tambah Transaksi</button>
+            <button type="button" class="btn-print" onclick="simpanPDF()">Simpan PDF</button>
+        </div>
+    </form>
+
+    <!-- WRAPPER UTAMA LAPORAN PDF -->
+    <div id="area-laporan-pdf">
+        
+        <!-- Baris tambahan Ringkasan Total Masuk & Keluar khusus untuk PDF -->
+        <div class="pdf-header-ringkasan">
+            <div class="pdf-ringkasan-box bg-masuk">
+                Total Pemasukan: <span id="pdf-total-masuk">Rp 0</span>
+            </div>
+            <div class="pdf-ringkasan-box bg-keluar">
+                Total Pengeluaran: <span id="pdf-total-keluar">Rp 0</span>
+            </div>
+        </div>
+
+        <h3 style="margin-bottom: 15px; text-align: left; border-left: 5px solid #34495e; padding-left: 10px;">Riwayat Transaksi Kas</h3>
+        
+        <div class="grid-riwayat">
+            <div class="kolom kolom-masuk">
+                <h4>Pemasukan (+)</h4>
+                <div id="daftar-masuk"></div>
+            </div>
+
+            <div class="kolom kolom-keluar">
+                <h4>Pengeluaran (-)</h4>
+                <div id="daftar-keluar"></div>
+            </div>
+        </div>
+
+    </div>
+</div>
+
+<script>
+    const form = document.getElementById('form-transaksi');
+    const deskripsiInput = document.getElementById('deskripsi');
+    const jumlahInput = document.getElementById('jumlah');
+    const tanggalInput = document.getElementById('tanggal');
+    const jenisInput = document.getElementById('jenis');
+    
+    const daftarMasuk = document.getElementById('daftar-masuk');
+    const daftarKeluar = document.getElementById('daftar-keluar');
+    
+    const totalSaldo = document.getElementById('total-saldo');
+    const totalMasukTeks = document.getElementById('total-masuk');
+    const totalKeluarTeks = document.getElementById('total-keluar');
+
+    // Elemen teks ringkasan PDF
+    const pdfTotalMasuk = document.getElementById('pdf-total-masuk');
+    const pdfTotalKeluar = document.getElementById('pdf-total-keluar');
+
+    let dataTransaksi = JSON.parse(localStorage.getItem('transaksi_kirikanan_tgl')) || [];
+
+    const hariIni = new Date().toISOString().split('T')[0];
+    tanggalInput.value = hariIni;
+
+    function formatRupiah(angka) {
+        return 'Rp ' + Number(angka).toLocaleString('id-ID');
+    }
+
+    function formatTanggalIndo(stringTanggal) {
+        if(!stringTanggal) return '';
+        const opsi = { year: 'numeric', month: 'long', day: 'numeric' };
+        return new Date(stringTanggal).toLocaleDateString('id-ID', opsi);
+    }
+
+    function updateUI() {
+        daftarMasuk.innerHTML = '';
+        daftarKeluar.innerHTML = '';
+
+        let saldoUangMasuk = 0;
+        let saldoUangKeluar = 0;
+
+        dataTransaksi.sort((a, b) => new Date(b.tanggal) - new Date(a.tanggal));
+
+        dataTransaksi.forEach((transaksi, index) => {
+            const item = document.createElement('div');
+            item.classList.add('item-transaksi');
+            
+            item.innerHTML = `
+                <div>
+                    <strong>${transaksi.deskripsi}</strong>
+                    <span class="info-tgl">${formatTanggalIndo(transaksi.tanggal)}</span>
+                    <small style="color: ${transaksi.jenis === 'masuk' ? '#2ecc71' : '#e74c3c'}">
+                        ${formatRupiah(transaksi.jumlah)}
+                    </small>
+                </div>
+                <button class="hapus-btn" onclick="hapusTransaksi(${index})">Hapus</button>
+            `;
+
+            if (transaksi.jenis === 'masuk') {
+                saldoUangMasuk += transaksi.jumlah;
+                daftarMasuk.appendChild(item);
+            } else {
+                saldoUangKeluar += transaksi.jumlah;
+                daftarKeluar.appendChild(item);
+            }
+        });
+
+        if (daftarMasuk.children.length === 0) {
+            daftarMasuk.innerHTML = '<p style="text-align:center; color:#999; font-size:14px;">Belum ada pemasukan.</p>';
+        }
+        if (daftarKeluar.children.length === 0) {
+            daftarKeluar.innerHTML = '<p style="text-align:center; color:#999; font-size:14px;">Belum ada pengeluaran.</p>';
+        }
+
+        let sisaSaldo = saldoUangMasuk - saldoUangKeluar;
+
+        totalMasukTeks.textContent = formatRupiah(saldoUangMasuk);
+        totalKeluarTeks.textContent = formatRupiah(saldoUangKeluar);
+        
+        // Update juga nilai ringkasan PDF atas
+        pdfTotalMasuk.textContent = formatRupiah(saldoUangMasuk);
+        pdfTotalKeluar.textContent = formatRupiah(saldoUangKeluar);
+        
+        totalSaldo.textContent = formatRupiah(sisaSaldo);
+
+        if (sisaSaldo < 0) {
+            totalSaldo.style.backgroundColor = '#e74c3c';
+        } else {
+            totalSaldo.style.backgroundColor = '#3498db';
+        }
+    }
+
+    form.addEventListener('submit', function(e) {
+        e.preventDefault();
+
+        const transaksiBaru = {
+            deskripsi: deskripsiInput.value,
+            jumlah: parseInt(jumlahInput.value),
+            tanggal: tanggalInput.value,
+            jenis: jenisInput.value
+        };
+
+        dataTransaksi.push(transaksiBaru);
+        localStorage.setItem('transaksi_kirikanan_tgl', JSON.stringify(dataTransaksi));
+        
+        updateUI();
+        form.reset();
+        tanggalInput.value = hariIni;
+    });
+
+    window.hapusTransaksi = function(index) {
+        dataTransaksi.splice(index, 1);
+        localStorage.setItem('transaksi_kirikanan_tgl', JSON.stringify(dataTransaksi));
+        updateUI();
+    }
+
+    window.simpanPDF = function() {
+        const { jsPDF } = window.jspdf;
+        
+        // 1. Sembunyikan tombol hapus agar bersih
+        const tombolHapus = document.querySelectorAll('.hapus-btn');
+        tombolHapus.forEach(btn => btn.style.display = 'none');
+
+        // 2. Maksimalkan tinggi kolom tabel agar tidak terpotong karena scroll internal
+        const kolomBox = document.querySelectorAll('.kolom');
+        kolomBox.forEach(k => k.style.maxHeight = 'none');
+
+        // 3. Target area yang dicetak
+        const targetArea = document.getElementById('area-laporan-pdf');
+
+        // Paksa lebar layout area PDF ke standar desktop (800px) agar konversi kiri-kanan tetap rapi seimbang di HP
+        const originalWidth = targetArea.style.width;
+        targetArea.style.width = '800px';
+
+        html2canvas(targetArea, { scale: 2, useCORS: true }).then(canvas => {
+            const imgData = canvas.toDataURL('image/png');
+            
+            const pdf = new jsPDF('p', 'mm', 'a4');
+            const imgWidth = 190; 
+            const pageHeight = 295;  
+            const imgHeight = (canvas.height * imgWidth) / canvas.width;
+            let heightLeft = imgHeight;
+            let position = 15; // Margin atas laporan
+
+            pdf.addImage(imgData, 'PNG', 10, position, imgWidth, imgHeight);
+            heightLeft -= pageHeight;
+
+            while (heightLeft >= 0) {
+                position = heightLeft - imgHeight + 15;
+                pdf.addPage();
+                pdf.addImage(imgData, 'PNG', 10, position, imgWidth, imgHeight);
+                heightLeft -= pageHeight;
+            }
+
+            pdf.save('Laporan_Catatan_Kas.pdf');
+
+            // Kembalikan layout aplikasi ke semula di layar ponsel
+            targetArea.style.width = originalWidth;
+            tombolHapus.forEach(btn => btn.style.display = 'block');
+            kolomBox.forEach(k => k.style.maxHeight = '400px');
+        });
+    }
+
+    updateUI();
+</script>
+
+</body>
+</html>
